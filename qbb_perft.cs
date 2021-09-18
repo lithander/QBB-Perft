@@ -64,7 +64,7 @@ namespace QBB
         */
         static TBoard[] Game = new TBoard[512];
         static int iPosition;
-        private static ref TBoard Position => ref Game[iPosition];
+        private static TBoard Position;
 
         /* array of bitboards that contains all the knight destination for every square */
         static ulong[] KnightDest = {
@@ -527,8 +527,7 @@ namespace QBB
 
         private static void Make(TMove move)
         {
-            iPosition++;
-            Game[iPosition] = Game[iPosition - 1];
+            Game[iPosition++] = Position;
             ulong part = 1UL << move.From;
             ulong dest = 1UL << move.To;
             switch (move.MoveType & TPieceType.PIECE_MASK)
@@ -731,7 +730,7 @@ namespace QBB
                 {
                     Make(capture);
                     total += Perft(depth - 1);
-                    iPosition--;
+                    Position = Game[--iPosition];
                 }
                 else
                     total++;
@@ -745,7 +744,7 @@ namespace QBB
                 {
                     Make(move);
                     total += Perft(depth - 1);
-                    iPosition--;
+                    Position = Game[--iPosition];
                 }
                 else
                     total++;
@@ -776,7 +775,7 @@ namespace QBB
         static void Main(string[] args)
         {
             Console.WriteLine("QBB Perft in C#");
-            Console.WriteLine("https://github.com/lithander/QBB-Perft/tree/v1.0");
+            Console.WriteLine("https://github.com/lithander/QBB-Perft/tree/v1.1");
             Console.WriteLine();
             double totalTime = 0;
             totalTime += TestPerft("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 6, 119060324); //Start Position
@@ -848,7 +847,7 @@ namespace QBB
                 {
                     Make(capture);
                     nodes = Perft(depth - 1);
-                    iPosition--;
+                    Position = Game[--iPosition];
                 }
                 total += nodes;
                 Console.WriteLine($"  {MoveToStr(capture, stm, true)}:    {nodes:N0}");
@@ -864,7 +863,7 @@ namespace QBB
                 {
                     Make(move);
                     nodes = Perft(depth - 1);
-                    iPosition--;
+                    Position = Game[--iPosition];
                 }
                 total += nodes;
                 Console.WriteLine($"  {MoveToStr(move, stm)}:    {nodes:N0}");
