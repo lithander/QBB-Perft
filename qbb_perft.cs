@@ -18,6 +18,7 @@ namespace QBB
 {
     class QbbPerft
     {
+        const int MAX_PLY = 32;
         const int WHITE = 0;
         const int BLACK = 8;
 
@@ -41,13 +42,12 @@ namespace QBB
         };
 
 
-        static readonly TMove[][] MovesLists;
+        static TMove[][] MovesLists;
 
         static QbbPerft()
         {
-            const int maxDepth = 32;
-            MovesLists = new TMove[maxDepth][];
-            for (int i = 0; i < maxDepth; i++)
+            MovesLists = new TMove[MAX_PLY][];
+            for (int i = 0; i < MAX_PLY; i++)
                 MovesLists[i] = new TMove[225];
         }
 
@@ -69,16 +69,12 @@ namespace QBB
             public byte STM; /* side to move */
         }
 
-        /*
-        Into Game are saved all the positions from the last 50 move counter reset
-        Position is the pointer to the last position of the game
-        */
-        static TBoard[] Game = new TBoard[512];
+        static TBoard[] Game = new TBoard[MAX_PLY];
         static int iPosition;
         private static TBoard Position;
 
         /* array of bitboards that contains all the knight destination for every square */
-        static ulong[] KnightDest = {
+        static readonly ulong[] KnightDest = {
             0x0000000000020400UL,0x0000000000050800UL,0x00000000000a1100UL,0x0000000000142200UL,
             0x0000000000284400UL,0x0000000000508800UL,0x0000000000a01000UL,0x0000000000402000UL,
             0x0000000002040004UL,0x0000000005080008UL,0x000000000a110011UL,0x0000000014220022UL,
@@ -98,7 +94,7 @@ namespace QBB
         };
 
         /* The same for the king */
-        static ulong[] KingDest = {
+        static readonly ulong[] KingDest = {
             0x0000000000000302UL,0x0000000000000705UL,0x0000000000000e0aUL,0x0000000000001c14UL,
             0x0000000000003828UL,0x0000000000007050UL,0x000000000000e0a0UL,0x000000000000c040UL,
             0x0000000000030203UL,0x0000000000070507UL,0x00000000000e0a0eUL,0x00000000001c141cUL,
@@ -118,13 +114,13 @@ namespace QBB
         };
 
         /* masks for finding the pawns that can capture with an enpassant (in move generation) */
-        static ulong[] EnPassant = {
+        static readonly ulong[] EnPassant = {
             0x0000000200000000UL,0x0000000500000000UL,0x0000000A00000000UL,0x0000001400000000UL,
             0x0000002800000000UL,0x0000005000000000UL,0x000000A000000000UL,0x0000004000000000UL
         };
 
         /* masks for finding the pawns that can capture with an enpassant (in make move) */
-        static ulong[] EnPassantM = {
+        static readonly ulong[] EnPassantM = {
             0x0000000002000000UL,0x0000000005000000UL,0x000000000A000000UL,0x0000000014000000UL,
             0x0000000028000000UL,0x0000000050000000UL,0x00000000A0000000UL,0x0000000040000000UL
         };
@@ -178,10 +174,8 @@ namespace QBB
            CastleSO: short castling opponent
            CastleLO: long castling opponent
          */
-        static bool CastleSM => (byte)(Position.CastleFlags & 0x02) != 0;
-        static bool CastleLM => (byte)(Position.CastleFlags & 0x01) != 0;
-        static bool CastleSO => (byte)(Position.CastleFlags & 0x20) != 0;
-        static bool CastleLO => (byte)(Position.CastleFlags & 0x10) != 0;
+        static bool CanCastleSM() => (Position.CastleFlags & 0x02) != 0;
+        static bool CanCastleLM() => (Position.CastleFlags & 0x01) != 0;
         static void ResetCastleSM() => Position.CastleFlags &= 0xFD;
         static void ResetCastleLM() => Position.CastleFlags &= 0xFE;
         static void ResetCastleSO() => Position.CastleFlags &= 0xDF;
@@ -198,24 +192,36 @@ namespace QBB
             1  0  1    queen
             1  1  0    king
         */
-        static ulong Occupation => Position.P0 | Position.P1 | Position.P2; /* board occupation */
-        static ulong Pawns => Position.P0 & ~Position.P1 & ~Position.P2; /* all the pawns on the board */
-        static ulong Knights => ~Position.P0 & Position.P1 & ~Position.P2;
-        static ulong Bishops => Position.P0 & Position.P1;
-        static ulong Rooks => ~Position.P0 & ~Position.P1 & Position.P2;
-        static ulong Queens => Position.P0 & Position.P2;
-        static ulong Kings => Position.P1 & Position.P2; /* a bitboard with the 2 kings */
-        static ulong SideToMove => Position.PM;
-        static byte EnPass => Position.EnPassant;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)] 
+        static ulong Occupation() => Position.P0 | Position.P1 | Position.P2; /* board occupation */
+        [MethodImpl(MethodImplOptions.AggressiveInlining)] 
+        static ulong Pawns() => Position.P0 & ~Position.P1 & ~Position.P2; /* all the pawns on the board */
+        [MethodImpl(MethodImplOptions.AggressiveInlining)] 
+        static ulong Knights() => ~Position.P0 & Position.P1 & ~Position.P2;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)] 
+        static ulong Bishops() => Position.P0 & Position.P1;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)] 
+        static ulong Rooks() => ~Position.P0 & ~Position.P1 & Position.P2;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)] 
+        static ulong Queens() => Position.P0 & Position.P2;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)] 
+        static ulong Kings() => Position.P1 & Position.P2; /* a bitboard with the 2 kings */
+        [MethodImpl(MethodImplOptions.AggressiveInlining)] 
+        static ulong SideToMove() => Position.PM;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)] 
+        static byte EnPass() => Position.EnPassant;
 
         /* get the piece type giving the square */
+        [MethodImpl(MethodImplOptions.AggressiveInlining)] 
         static ulong Piece(int sq) => ((Position.P2 >> sq) & 1) << 2 |
                                               ((Position.P1 >> sq) & 1) << 1 |
                                               ((Position.P0 >> sq) & 1);
 
         /* calculate the square related to the opponent */
+        [MethodImpl(MethodImplOptions.AggressiveInlining)] 
         static int OppSq(int sp) => sp ^ 56;
         /* Absolute Square, we need this macro to return the move in long algebric notation  */
+        [MethodImpl(MethodImplOptions.AggressiveInlining)] 
         static int AbsSq(int sq, int col) => col == WHITE ? sq : OppSq(sq);
 
         /* get the corresponding string to the given move  */
@@ -233,7 +239,7 @@ namespace QBB
 
         static void ChangeSide()
         {
-            Position.PM ^= Occupation; /* update the side to move pieces */
+            Position.PM ^= Occupation(); /* update the side to move pieces */
             Position.PM = RevBB(Position.PM);
             Position.P0 = RevBB(Position.P0);
             Position.P1 = RevBB(Position.P1);
@@ -242,6 +248,7 @@ namespace QBB
             Position.STM ^= BLACK; /* change the side to move */
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static ulong GenRook(int sq, ulong occupation)
         {
             ulong piece = 1UL << sq;
@@ -257,6 +264,7 @@ namespace QBB
         }
 
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static ulong GenBishop(int sq, ulong occupation)
         {
             /* it's the same as the rook */
@@ -271,16 +279,17 @@ namespace QBB
         }
 
         /* return the bitboard with pieces of the same type */
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         static ulong BBPieces(TPieceType piece)
         {
             switch (piece) // find the bb with the pieces of the same type
             {
-                case TPieceType.PAWN: return Pawns;
-                case TPieceType.KNIGHT: return Knights;
-                case TPieceType.BISHOP: return Bishops;
-                case TPieceType.ROOK: return Rooks;
-                case TPieceType.QUEEN: return Queens;
-                case TPieceType.KING: return Kings;
+                case TPieceType.PAWN: return Pawns();
+                case TPieceType.KNIGHT: return Knights();
+                case TPieceType.BISHOP: return Bishops();
+                case TPieceType.ROOK: return Rooks();
+                case TPieceType.QUEEN: return Queens();
+                case TPieceType.KING: return Kings();
                 default: return 0;
             }
         }
@@ -304,8 +313,8 @@ namespace QBB
         {
             ulong From = 1UL << move.From;
             ulong To = 1UL << move.To;
-            ulong occupation = Occupation;
-            ulong opposing = SideToMove ^ occupation;
+            ulong occupation = Occupation();
+            ulong opposing = SideToMove() ^ occupation;
             ulong king;
             int kingsq;
             ulong newoccupation = (occupation ^ From) | To;
@@ -317,7 +326,7 @@ namespace QBB
             }
             else
             {
-                king = Kings & SideToMove;
+                king = Kings() & SideToMove();
                 kingsq = (int)LSB(king);
                 if ((move.MoveType & TPieceType.EP) != 0)
                 {
@@ -325,25 +334,25 @@ namespace QBB
                     newoccupation ^= To >> 8;
                 }
             }
-            return (((KnightDest[kingsq] & Knights) |
-                     (GenRook(kingsq, newoccupation) & (Rooks | Queens)) |
-                     (GenBishop(kingsq, newoccupation) & (Bishops | Queens)) |
-                     ((((king << 9) & 0xFEFEFEFEFEFEFEFEUL) | ((king << 7) & 0x7F7F7F7F7F7F7F7FUL)) & Pawns) |
-                     (KingDest[kingsq] & Kings)
+            return (((KnightDest[kingsq] & Knights()) |
+                     (GenRook(kingsq, newoccupation) & (Rooks() | Queens())) |
+                     (GenBishop(kingsq, newoccupation) & (Bishops() | Queens())) |
+                     ((((king << 9) & 0xFEFEFEFEFEFEFEFEUL) | ((king << 7) & 0x7F7F7F7F7F7F7F7FUL)) & Pawns()) |
+                     (KingDest[kingsq] & Kings())
                     ) & newopposing) != 0;
         }
 
         private static void GenerateQuiets(in TMove[] moves, ref int index)
         {
-            ulong occupation = Occupation;
+            ulong occupation = Occupation();
             //TODO: this is a repeated pattern in the code, reuse don't repeat
-            ulong opposing = SideToMove ^ occupation;
+            ulong opposing = SideToMove() ^ occupation;
 
             // generate moves from king to knight
             for (TPieceType piece = TPieceType.KING; piece >= TPieceType.KNIGHT; piece--)
             {
                 // generate moves for every piece of the same type of the side to move
-                for (ulong pieces = BBPieces(piece) & SideToMove; pieces != 0; pieces = ClearLSB(pieces))
+                for (ulong pieces = BBPieces(piece) & SideToMove(); pieces != 0; pieces = ClearLSB(pieces))
                 {
                     int square = (int)LSB(pieces);
                     // for every destinations on a free square generate a move
@@ -358,7 +367,7 @@ namespace QBB
             }
 
             /* one pawns push */
-            ulong push1 = (((Pawns & SideToMove) << 8) & ~occupation) & 0x00FFFFFFFFFFFFFFUL;
+            ulong push1 = (((Pawns() & SideToMove()) << 8) & ~occupation) & 0x00FFFFFFFFFFFFFFUL;
             for (ulong pieces = push1; pieces != 0; pieces = ClearLSB(pieces))
                 moves[index++] = new TMove
                 {
@@ -378,7 +387,7 @@ namespace QBB
                 };
 
             /* check if long castling is possible */
-            if (CastleLM && (occupation & 0x0EUL) == 0)
+            if (CanCastleLM() && (occupation & 0x0EUL) == 0)
             {
                 ulong roo = ExtractLSB(0x1010101010101000UL & occupation); /* column e */
                 roo |= ExtractLSB(0x0808080808080800UL & occupation); /*column d */
@@ -390,8 +399,8 @@ namespace QBB
                 bis |= ExtractLSB(0x0000000080402000UL & occupation); /*diag from e1/e8 */
                 bis |= ExtractLSB(0x0000008040201000UL & occupation); /*diag from d1/d8 */
                 bis |= ExtractLSB(0x0000804020100800UL & occupation); /*diag from c1/c8 */
-                if ((((roo & (Rooks | Queens)) | (bis & (Bishops | Queens)) | (0x00000000003E7700UL & Knights) |
-                (0x0000000000003E00UL & Pawns) | (Kings & 0x0000000000000600UL)) & opposing) == 0)
+                if ((((roo & (Rooks() | Queens())) | (bis & (Bishops() | Queens())) | (0x00000000003E7700UL & Knights()) |
+                (0x0000000000003E00UL & Pawns()) | (Kings() & 0x0000000000000600UL)) & opposing) == 0)
                     /* check if c1/c8 d1/d8 e1/e8 are not attacked */
                     moves[index++] = new TMove
                     {
@@ -402,7 +411,7 @@ namespace QBB
             }
 
             /* check if short castling is possible */
-            if (CastleSM && (occupation & 0x60UL) == 0)
+            if (CanCastleSM() && (occupation & 0x60UL) == 0)
             {
                 ulong roo = ExtractLSB(0x1010101010101000UL & occupation); /* column e */
                 roo |= ExtractLSB(0x2020202020202000UL & occupation); /* column f */
@@ -414,8 +423,8 @@ namespace QBB
                 bis |= ExtractLSB(0x0000000080402000UL & occupation); /*diag from e1/e8 */
                 bis |= ExtractLSB(0x0000000000804000UL & occupation); /*diag from f1/f8 */
                 bis |= 0x0000000000008000UL; /*diag from g1/g8 */
-                if ((((roo & (Rooks | Queens)) | (bis & (Bishops | Queens)) | (0x0000000000F8DC00UL & Knights) |
-                (0x000000000000F800UL & Pawns) | (Kings & 0x0000000000004000UL)) & opposing) == 0)
+                if ((((roo & (Rooks() | Queens())) | (bis & (Bishops() | Queens())) | (0x0000000000F8DC00UL & Knights()) |
+                (0x000000000000F800UL & Pawns()) | (Kings() & 0x0000000000004000UL)) & opposing) == 0)
                     /* check if e1/e8 f1/f8 g1/g8 are not attacked */
                     moves[index++] = new TMove
                     {
@@ -428,14 +437,14 @@ namespace QBB
 
         private static void GenerateCapture(in TMove[] moves, ref int index)
         {
-            ulong occupation = Occupation;
-            ulong opposing = SideToMove ^ occupation;
+            ulong occupation = Occupation();
+            ulong opposing = SideToMove() ^ occupation;
 
             // generate moves from king to knight
             for (TPieceType piece = TPieceType.KING; piece >= TPieceType.KNIGHT; piece--)
             {
                 // generate moves for every piece of the same type of the side to move
-                for (ulong pieces = BBPieces(piece) & SideToMove; pieces != 0; pieces = ClearLSB(pieces))
+                for (ulong pieces = BBPieces(piece) & SideToMove(); pieces != 0; pieces = ClearLSB(pieces))
                 {
                     int square = (int)LSB(pieces);
 
@@ -453,7 +462,7 @@ namespace QBB
                 }
             }
 
-            ulong pawns = Pawns & SideToMove;
+            ulong pawns = Pawns() & SideToMove();
             /* Generate pawns right captures */
             for (ulong rpc = (pawns << 9) & 0x00FEFEFEFEFEFEFEUL & opposing; rpc != 0; rpc = ClearLSB(rpc))
                 moves[index++] = new TMove()
@@ -521,14 +530,14 @@ namespace QBB
                 }
             }
 
-            if (EnPass != 8)
+            if (EnPass() != 8)
             {
-                for (ulong enpassant = pawns & EnPassant[EnPass]; enpassant != 0; enpassant = ClearLSB((enpassant)))
+                for (ulong enpassant = pawns & EnPassant[EnPass()]; enpassant != 0; enpassant = ClearLSB((enpassant)))
                     moves[index++] = new TMove()
                     {
                         MoveType = TPieceType.PAWN | TPieceType.EP | TPieceType.PROMO,
                         From = (byte)LSB(enpassant),
-                        To = (byte)(40 + EnPass)
+                        To = (byte)(40 + EnPass())
                         //Eval = (PAWN<<4)|(KING-PAWN);
                     };
             }
@@ -576,14 +585,14 @@ namespace QBB
                             Position.P0 ^= part | dest;
                             Position.EnPassant = 8; /* clear enpassant */
 
-                            if (move.To == move.From + 16 && (EnPassantM[move.To & 0x07] & Pawns & (SideToMove ^ Occupation)) != 0)
+                            if (move.To == move.From + 16 && (EnPassantM[move.To & 0x07] & Pawns() & (SideToMove() ^ Occupation())) != 0)
                                 Position.EnPassant = (byte)(move.To & 0x07); /* save enpassant column */
                         }
 
                         if ((move.MoveType & TPieceType.CAPTURE) != 0)
                         {
-                            if (CastleSO && move.To == 63) ResetCastleSO(); /* captured the opponent king side rook */
-                            else if (CastleLO && move.To == 56) ResetCastleLO(); /* captured the opponent quuen side rook */
+                            if (move.To == 63) ResetCastleSO(); /* captured the opponent king side rook */
+                            else if (move.To == 56) ResetCastleLO(); /* captured the opponent quuen side rook */
                         }
                     }
                     ChangeSide();
@@ -607,13 +616,15 @@ namespace QBB
                     Position.EnPassant = 8;
                     if ((move.MoveType & TPieceType.PIECE_MASK) == TPieceType.ROOK)
                     {
-                        if (CastleSM && move.From == 7) ResetCastleSM(); //king side rook moved
-                        else if (CastleLM && move.From == 0) ResetCastleLM(); // queen side rook moved
+                        if (move.From == 7) 
+                            ResetCastleSM(); //king side rook moved
+                        else if (move.From == 0) 
+                            ResetCastleLM(); // queen side rook moved
                     }
                     if ((move.MoveType & TPieceType.CAPTURE) != 0)
                     {
-                        if (CastleSO && move.To == 63) ResetCastleSO(); /* captured the opponent king side rook */
-                        else if (CastleLO && move.To == 56) ResetCastleLO(); /* captured the opponent quuen side rook */
+                        if (move.To == 63) ResetCastleSO(); /* captured the opponent king side rook */
+                        else if (move.To == 56) ResetCastleLO(); /* captured the opponent quuen side rook */
                     }
                     ChangeSide();
                     break;
@@ -628,13 +639,15 @@ namespace QBB
                     Position.PM ^= part | dest;
                     Position.P1 ^= part | dest;
                     Position.P2 ^= part | dest;
-                    if (CastleSM) ResetCastleSM(); /* update the castle rights */
-                    if (CastleLM) ResetCastleLM();
+                    ResetCastleSM(); /* update the castle rights */
+                    ResetCastleLM();
                     Position.EnPassant = 8;
                     if ((move.MoveType & TPieceType.CAPTURE) != 0)
                     {
-                        if (CastleSO && move.To == 63) ResetCastleSO(); /* captured the opponent king side rook */
-                        else if (CastleLO && move.To == 56) ResetCastleLO(); /* captured the opponent quuen side rook */
+                        if (move.To == 63) 
+                            ResetCastleSO(); /* captured the opponent king side rook */
+                        else if (move.To == 56) 
+                            ResetCastleLO(); /* captured the opponent quuen side rook */
                     }
                     else if ((move.MoveType & TPieceType.CASTLE) != 0)
                     {
@@ -775,7 +788,7 @@ namespace QBB
         static void Main(string[] args)
         {
             Console.WriteLine("QBB Perft in C#");
-            Console.WriteLine("https://github.com/lithander/QBB-Perft/tree/v1.2");
+            Console.WriteLine("https://github.com/lithander/QBB-Perft/tree/v1.3");
             Console.WriteLine();
             double totalTime = 0;
             totalTime += TestPerft("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 6, 119060324); //Start Position
@@ -799,12 +812,12 @@ namespace QBB
             PrintBB(pos.P1, "P1");
             PrintBB(pos.P2, "P2");
             Console.WriteLine("- - - -");
-            PrintBB(Pawns, "Pawns");
-            PrintBB(Knights, "Knights");
-            PrintBB(Bishops, "Bishops");
-            PrintBB(Rooks, "Roosk");
-            PrintBB(Queens, "Queens");
-            PrintBB(Kings, "Kings");
+            PrintBB(Pawns(), "Pawns");
+            PrintBB(Knights(), "Knights");
+            PrintBB(Bishops(), "Bishops");
+            PrintBB(Rooks(), "Roosk");
+            PrintBB(Queens(), "Queens");
+            PrintBB(Kings(), "Kings");
 
             Console.WriteLine($"CastleFlags: {pos.CastleFlags}");  /* ..sl..SL  short long opponent SHORT LONG side to move */
             Console.WriteLine($"EnPassant column: {pos.EnPassant} (8 if not set)");
