@@ -204,12 +204,18 @@ namespace QBB
         static ulong Rooks() => ~Position.P0 & ~Position.P1 & Position.P2;
         [MethodImpl(MethodImplOptions.AggressiveInlining)] 
         static ulong Queens() => Position.P0 & Position.P2;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        static ulong QueenOrRooks() => ~Position.P1 & Position.P2;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        static ulong QueenOrBishops() => Position.P0 & (Position.P2 | Position.P1);
         [MethodImpl(MethodImplOptions.AggressiveInlining)] 
         static ulong Kings() => Position.P1 & Position.P2; /* a bitboard with the 2 kings */
         [MethodImpl(MethodImplOptions.AggressiveInlining)] 
         static ulong SideToMove() => Position.PM;
         [MethodImpl(MethodImplOptions.AggressiveInlining)] 
         static byte EnPass() => Position.EnPassant;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        static ulong Opposing() => Position.PM ^ (Position.P0 | Position.P1 | Position.P2);
 
         /* get the piece type giving the square */
         [MethodImpl(MethodImplOptions.AggressiveInlining)] 
@@ -313,12 +319,10 @@ namespace QBB
         {
             ulong From = 1UL << move.From;
             ulong To = 1UL << move.To;
-            ulong occupation = Occupation();
-            ulong opposing = SideToMove() ^ occupation;
             ulong king;
             int kingsq;
-            ulong newoccupation = (occupation ^ From) | To;
-            ulong newopposing = opposing & ~To;
+            ulong newoccupation = (Occupation() ^ From) | To;
+            ulong newopposing = Opposing() & ~To;
             if ((move.MoveType & TPieceType.PIECE_MASK) == TPieceType.KING)
             {
                 king = To;
@@ -334,19 +338,21 @@ namespace QBB
                     newoccupation ^= To >> 8;
                 }
             }
-            return (((KnightDest[kingsq] & Knights()) |
-                     (GenRook(kingsq, newoccupation) & (Rooks() | Queens())) |
-                     (GenBishop(kingsq, newoccupation) & (Bishops() | Queens())) |
-                     ((((king << 9) & 0xFEFEFEFEFEFEFEFEUL) | ((king << 7) & 0x7F7F7F7F7F7F7F7FUL)) & Pawns()) |
-                     (KingDest[kingsq] & Kings())
-                    ) & newopposing) != 0;
+
+            bool kingIsSafe = //as soon as there's one attack you can stop evaluating the remaining peieces (early out)
+                (KnightDest[kingsq] & Knights() & newopposing) == 0 &&
+                ((((king << 9) & 0xFEFEFEFEFEFEFEFEUL) | ((king << 7) & 0x7F7F7F7F7F7F7F7FUL)) & Pawns() & newopposing) == 0 &&
+                (GenBishop(kingsq, newoccupation) & QueenOrBishops() & newopposing) == 0 &&
+                (GenRook(kingsq, newoccupation) & QueenOrRooks() & newopposing) == 0 &&
+                ((KingDest[kingsq] & Kings()) & newopposing) == 0;
+
+            return !kingIsSafe;
         }
 
         private static void GenerateQuiets(in TMove[] moves, ref int index)
         {
             ulong occupation = Occupation();
-            //TODO: this is a repeated pattern in the code, reuse don't repeat
-            ulong opposing = SideToMove() ^ occupation;
+            ulong opposing = Opposing();
 
             // generate moves from king to knight
             for (TPieceType piece = TPieceType.KING; piece >= TPieceType.KNIGHT; piece--)
@@ -399,7 +405,7 @@ namespace QBB
                 bis |= ExtractLSB(0x0000000080402000UL & occupation); /*diag from e1/e8 */
                 bis |= ExtractLSB(0x0000008040201000UL & occupation); /*diag from d1/d8 */
                 bis |= ExtractLSB(0x0000804020100800UL & occupation); /*diag from c1/c8 */
-                if ((((roo & (Rooks() | Queens())) | (bis & (Bishops() | Queens())) | (0x00000000003E7700UL & Knights()) |
+                if ((((roo & QueenOrRooks()) | (bis & QueenOrBishops()) | (0x00000000003E7700UL & Knights()) |
                 (0x0000000000003E00UL & Pawns()) | (Kings() & 0x0000000000000600UL)) & opposing) == 0)
                     /* check if c1/c8 d1/d8 e1/e8 are not attacked */
                     moves[index++] = new TMove
@@ -423,7 +429,7 @@ namespace QBB
                 bis |= ExtractLSB(0x0000000080402000UL & occupation); /*diag from e1/e8 */
                 bis |= ExtractLSB(0x0000000000804000UL & occupation); /*diag from f1/f8 */
                 bis |= 0x0000000000008000UL; /*diag from g1/g8 */
-                if ((((roo & (Rooks() | Queens())) | (bis & (Bishops() | Queens())) | (0x0000000000F8DC00UL & Knights()) |
+                if ((((roo & QueenOrRooks()) | (bis & QueenOrBishops()) | (0x0000000000F8DC00UL & Knights()) |
                 (0x000000000000F800UL & Pawns()) | (Kings() & 0x0000000000004000UL)) & opposing) == 0)
                     /* check if e1/e8 f1/f8 g1/g8 are not attacked */
                     moves[index++] = new TMove
@@ -438,7 +444,7 @@ namespace QBB
         private static void GenerateCapture(in TMove[] moves, ref int index)
         {
             ulong occupation = Occupation();
-            ulong opposing = SideToMove() ^ occupation;
+            ulong opposing = Opposing();
 
             // generate moves from king to knight
             for (TPieceType piece = TPieceType.KING; piece >= TPieceType.KNIGHT; piece--)
@@ -585,7 +591,7 @@ namespace QBB
                             Position.P0 ^= part | dest;
                             Position.EnPassant = 8; /* clear enpassant */
 
-                            if (move.To == move.From + 16 && (EnPassantM[move.To & 0x07] & Pawns() & (SideToMove() ^ Occupation())) != 0)
+                            if (move.To == move.From + 16 && (EnPassantM[move.To & 0x07] & Pawns() & Opposing()) != 0)
                                 Position.EnPassant = (byte)(move.To & 0x07); /* save enpassant column */
                         }
 
@@ -788,7 +794,7 @@ namespace QBB
         static void Main(string[] args)
         {
             Console.WriteLine("QBB Perft in C#");
-            Console.WriteLine("https://github.com/lithander/QBB-Perft/tree/v1.3");
+            Console.WriteLine("https://github.com/lithander/QBB-Perft/tree/v1.4");
             Console.WriteLine();
             double totalTime = 0;
             totalTime += TestPerft("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 6, 119060324); //Start Position
@@ -800,7 +806,7 @@ namespace QBB
             Console.WriteLine();
             Console.WriteLine($"Total Time: {(int)(1000 * totalTime)} ms");
             Console.WriteLine("Press any key to quit");//stop command prompt from closing automatically on windows
-            Console.Read();
+            Console.ReadKey();
         }
 
         //**** Debug Helpers not in the original C code
