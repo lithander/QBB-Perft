@@ -771,7 +771,21 @@ namespace QBB
             return total;
         }
 
-        private static double TestPerft(string fen, int depth, int expectedResult)
+        struct PerftResult
+        {
+            public double Duration;
+            public long Nodes;
+            
+            public PerftResult(double t, long n)
+            {
+                Duration = t;
+                Nodes = n;
+            }
+
+            public static PerftResult operator +(PerftResult a, PerftResult b) => new(a.Duration + b.Duration, a.Nodes + b.Nodes);
+        }
+
+        private static PerftResult TestPerft(string fen, int depth, int expectedResult)
         {
             LoadPosition(fen);
             //PrintPosition(Game[Position]);
@@ -788,7 +802,7 @@ namespace QBB
             }
             else
                 Console.WriteLine($"OK! {(int)ms}ms, {(int)(count / ms)}K NPS");
-            return dt;
+            return new PerftResult(dt, count);
         }
 
         static void Main(string[] args)
@@ -796,15 +810,15 @@ namespace QBB
             Console.WriteLine("QBB Perft in C#");
             Console.WriteLine("https://github.com/lithander/QBB-Perft/tree/v1.4");
             Console.WriteLine();
-            double totalTime = 0;
-            totalTime += TestPerft("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 6, 119060324); //Start Position
-            totalTime += TestPerft("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1", 5, 193690690);
-            totalTime += TestPerft("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1", 7, 178633661);
-            totalTime += TestPerft("r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1", 6, 706045033);
-            totalTime += TestPerft("rnbqkb1r/pp1p1ppp/2p5/4P3/2B5/8/PPP1NnPP/RNBQK2R w KQkq - 0 6", 3, 53392);
-            totalTime += TestPerft("r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10", 5, 164075551);
+            PerftResult accu = TestPerft("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 6, 119060324); //Start Position
+            accu += TestPerft("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1", 5, 193690690);
+            accu += TestPerft("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1", 7, 178633661);
+            accu += TestPerft("r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1", 6, 706045033);
+            accu += TestPerft("rnbqkb1r/pp1p1ppp/2p5/4P3/2B5/8/PPP1NnPP/RNBQK2R w KQkq - 0 6", 3, 53392);
+            accu += TestPerft("r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10", 5, 164075551);
+
             Console.WriteLine();
-            Console.WriteLine($"Total Time: {(int)(1000 * totalTime)} ms");
+            Console.WriteLine($"Total: {accu.Nodes} Nodes, {(int)(1000 * accu.Duration)}ms, {(int)(accu.Nodes / accu.Duration / 1000)}K NPS");
             Console.WriteLine("Press any key to quit");//stop command prompt from closing automatically on windows
             Console.ReadKey();
         }

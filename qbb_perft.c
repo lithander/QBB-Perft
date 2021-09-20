@@ -744,6 +744,8 @@ static void TestPerft(void)
              {"rnbqkb1r/pp1p1ppp/2p5/4P3/2B5/8/PPP1NnPP/RNBQK2R w KQkq - 0 6",3,53392},
              {"r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10",5,164075551}};
 
+   int64_t totalCount = 0;
+   int64_t totalDuration = 0;
    for (unsigned int i=0;i<(sizeof Test) / (sizeof (Test[0])); i++)
    {
       LoadPosition(Test[i].fen,"");
@@ -752,11 +754,13 @@ static void TestPerft(void)
       printf("%s%"PRId64"%s%"PRId64"%s","Expected: ",Test[i].count," Computed: ",Perft(Test[i].depth),"\r\n");
 	  clock_gettime(CLOCK_MONOTONIC,&end);
       long t_diff = (end.tv_sec - begin.tv_sec) * 1000 + (end.tv_nsec - begin.tv_nsec) / (1000 * 1000);
-      printf("%lu ms passed\r\n", t_diff);
       long knps = Test[i].count / t_diff;
-      printf("%lu knps\r\n", knps);
-      printf("\r\n");
+      printf("%lu ms, %luK NPS\r\n", t_diff, knps);
+      totalCount += Test[i].count;
+      totalDuration += t_diff;
    }
+   printf("\r\n");
+   printf("Total: %lu Nodes, %lu ms, %luK NPS\r\n", totalCount, totalDuration, totalCount / totalDuration);
    exit(0);
 }
 
