@@ -12,8 +12,11 @@
 #include <inttypes.h>
 #include <stdio.h>
 
+
 #define WHITE 0
 #define BLACK 8
+#define MAX_PLY 32
+
 
 /* define the piece type: empty, pawn, knight, bishop, rook, queen, king */
 typedef enum {EMPTY,PAWN,KNIGHT,BISHOP,ROOK,QUEEN,KING} TPieceType;
@@ -67,7 +70,7 @@ typedef struct
 Into Game are saved all the positions from the last 50 move counter reset
 Position is the pointer to the last position of the game
 */
-TBoard Game[512];
+TBoard Game[MAX_PLY];
 TBoard *Position;
 
 /* array of bitboards that contains all the knight destination for every square */
@@ -326,8 +329,8 @@ static inline TMove *GenerateQuiets(TMove *const quiets)
    for (TBB pieces=push1;pieces;pieces=ClearLSB(pieces))
    {
       pquiets->MoveType = PAWN;
-      pquiets->From = LSB(pieces)-8;
       pquiets->To = LSB(pieces);
+      pquiets->From = pquiets->To -8;
       pquiets->Prom = EMPTY;
       pquiets++;
    }
@@ -336,8 +339,8 @@ static inline TMove *GenerateQuiets(TMove *const quiets)
    for (TBB push2 = (push1<<8) & ~occupation & 0x00000000FF000000ULL;push2;push2=ClearLSB(push2))
    {
       pquiets->MoveType = PAWN;
-      pquiets->From = LSB(push2)-16;
       pquiets->To = LSB(push2);
+      pquiets->From = pquiets->To -16;
       pquiets->Prom = EMPTY;
       pquiets++;
    }
@@ -425,8 +428,8 @@ static inline TMoveEval *GenerateCapture(TMoveEval *const capture)
    for (TBB captureri = (pieces<<9) & 0x00FEFEFEFEFEFEFEULL & opposing;captureri;captureri = ClearLSB(captureri))
    {
       pcapture->Move.MoveType = PAWN|CAPTURE;
-      pcapture->Move.From = LSB(captureri)-9;
       pcapture->Move.To = LSB(captureri);
+      pcapture->Move.From = pcapture->Move.To -9;
       pcapture->Move.Prom = EMPTY;
       //pcapture->Eval = (Piece(LSB(captureri))<<4)|(KING-PAWN);
       pcapture++;
@@ -435,8 +438,8 @@ static inline TMoveEval *GenerateCapture(TMoveEval *const capture)
    for (TBB capturele = (pieces<<7) & 0x007F7F7F7F7F7F7FULL & opposing;capturele;capturele = ClearLSB(capturele))
    {
       pcapture->Move.MoveType = PAWN|CAPTURE;
-      pcapture->Move.From = LSB(capturele)-7;
       pcapture->Move.To = LSB(capturele);
+      pcapture->Move.From = pcapture->Move.To -7;
       pcapture->Move.Prom = EMPTY;
       //pcapture->Eval = (Piece(LSB(capturele))<<4)|(KING-PAWN);
       pcapture++;
@@ -450,8 +453,8 @@ static inline TMoveEval *GenerateCapture(TMoveEval *const capture)
       {
          TMove move;
          move.MoveType = PAWN|PROMO|CAPTURE;
-         move.From = LSB(promo)-9;
          move.To = LSB(promo);
+         move.From = move.To -9;
          move.Prom = QUEEN;
          pcapture->Move = move;
          //pcapture->Eval = (QUEEN<<4)|(KING-PAWN);
@@ -469,8 +472,8 @@ static inline TMoveEval *GenerateCapture(TMoveEval *const capture)
       {
          TMove move;
          move.MoveType = PAWN|PROMO|CAPTURE;
-         move.From = LSB(promo)-7;
          move.To = LSB(promo);
+         move.From = move.To -7;
          move.Prom = QUEEN;
          pcapture->Move = move;
          //pcapture->Eval = (QUEEN<<4)|(KING-PAWN);
@@ -488,8 +491,8 @@ static inline TMoveEval *GenerateCapture(TMoveEval *const capture)
       {
          TMove move;
          move.MoveType = PAWN|PROMO;
-         move.From = LSB(promo)-8;
          move.To = LSB(promo);
+         move.From = move.To -8;
          move.Prom = QUEEN;
          pcapture->Move = move;
          //pcapture->Eval = (QUEEN<<4)|(KING-PAWN);
@@ -563,8 +566,8 @@ static inline void Make(TMove move)
             }
             if (move.MoveType&CAPTURE)
             {
-               if (CastleSO && move.To==63) ResetCastleSO; /* captured the opponent king side rook */
-               else if (CastleLO && move.To==56) ResetCastleLO; /* captured the opponent quuen side rook */
+               if (move.To==63) ResetCastleSO; /* captured the opponent king side rook */
+               else if (move.To==56) ResetCastleLO; /* captured the opponent quuen side rook */
             }
          }
          ChangeSide;
@@ -586,13 +589,13 @@ static inline void Make(TMove move)
          Position->EnPassant=8;
          if ((move.MoveType&0x7)==ROOK) /* update the castle rights */
          {
-            if (CastleSM && move.From==7) ResetCastleSM;
-            else if (CastleLM && move.From==0) ResetCastleLM;
+            if (move.From==7) ResetCastleSM;
+            else if (move.From==0) ResetCastleLM;
          }
          if (move.MoveType&CAPTURE) /* update the castle rights */
          {
-            if (CastleSO && move.To==63) ResetCastleSO;
-            else if (CastleLO && move.To==56) ResetCastleLO;
+            if (move.To==63) ResetCastleSO;
+            else if (move.To==56) ResetCastleLO;
          }
          ChangeSide;
          break;
@@ -606,8 +609,8 @@ static inline void Make(TMove move)
          Position->PM^=part|dest;
          Position->P1^=part|dest;
          Position->P2^=part|dest;
-         if (CastleSM) ResetCastleSM; /* update the castle rights */
-         if (CastleLM) ResetCastleLM;
+         ResetCastleSM; /* update the castle rights */
+         ResetCastleLM;
          Position->EnPassant=8;
          if (move.MoveType&CAPTURE)
          {
@@ -730,6 +733,45 @@ static int64_t Perft(int depth)
    return tot;
 }
 
+#if defined(_WIN32)
+// Windows compilable replacement for POSIX clock_gettime
+
+#include <windows.h>
+
+#define BILLION                             (1E9)
+#define CLOCK_MONOTONIC 0
+
+static BOOL g_first_time = 1;
+static LARGE_INTEGER g_counts_per_sec;
+
+int clock_gettime(int dummy, struct timespec* ct)
+{
+    LARGE_INTEGER count;
+
+    if (g_first_time)
+    {
+        g_first_time = 0;
+
+        if (0 == QueryPerformanceFrequency(&g_counts_per_sec))
+        {
+            g_counts_per_sec.QuadPart = 0;
+        }
+    }
+
+    if ((NULL == ct) || (g_counts_per_sec.QuadPart <= 0) ||
+        (0 == QueryPerformanceCounter(&count)))
+    {
+        return -1;
+    }
+
+    ct->tv_sec = count.QuadPart / g_counts_per_sec.QuadPart;
+    ct->tv_nsec = ((count.QuadPart % g_counts_per_sec.QuadPart) * BILLION) / g_counts_per_sec.QuadPart;
+
+    return 0;
+}
+#endif
+
+
 /* Run the Perft with this 6 test positions */
 static void TestPerft(void)
 {
@@ -766,8 +808,7 @@ static void TestPerft(void)
 
 int main (int argc, char *argv[])
 {
-   printf("QBB Perft in C\r\n");
+   printf("QBB Perft in C - v1.1\r\n");
    TestPerft();
    return 0;
 }
-
