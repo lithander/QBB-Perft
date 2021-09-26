@@ -289,16 +289,20 @@ namespace QBB
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static ulong GenRook(int sq, ulong occupation)
         {
-            ulong piece = 1UL << sq;
-            occupation ^= piece; /* remove the selected piece from the occupation */
-            ulong piecesup = (0x0101010101010101UL << sq) & (occupation | 0xFF00000000000000UL); /* find the pieces up */
-            ulong piecesdo = (0x8080808080808080UL >> (63 - sq)) & (occupation | 0x00000000000000FFUL); /* find the pieces down */
-            ulong piecesri = (0x00000000000000FFUL << sq) & (occupation | 0x8080808080808080UL); /* find pieces on the right */
-            ulong piecesle = (0xFF00000000000000UL >> (63 - sq)) & (occupation | 0x0101010101010101UL); /* find pieces on the left */
-            return (((0x8080808080808080UL >> (63 - (int)LSB(piecesup))) & (0x0101010101010101UL << (int)MSB(piecesdo))) |
-                         ((0xFF00000000000000UL >> (63 - (int)LSB(piecesri))) & (0x00000000000000FFUL << (int)MSB(piecesle)))) ^ piece;
+            //ulong piece = 1UL << sq;
+            //occupation ^= piece; /* remove the selected piece from the occupation */
+            //ulong piecesup = (0x0101010101010101UL << sq) & (occupation | 0xFF00000000000000UL); /* find the pieces up */
+            //ulong piecesdo = (0x8080808080808080UL >> (63 - sq)) & (occupation | 0x00000000000000FFUL); /* find the pieces down */
+            //ulong piecesri = (0x00000000000000FFUL << sq) & (occupation | 0x8080808080808080UL); /* find pieces on the right */
+            //ulong piecesle = (0xFF00000000000000UL >> (63 - sq)) & (occupation | 0x0101010101010101UL); /* find pieces on the left */
+            //return (((0x8080808080808080UL >> (63 - (int)LSB(piecesup))) & (0x0101010101010101UL << (int)MSB(piecesdo))) |
+            //             ((0xFF00000000000000UL >> (63 - (int)LSB(piecesri))) & (0x00000000000000FFUL << (int)MSB(piecesle)))) ^ piece;
             /* From every direction find the first piece and from that piece put a mask in the opposite direction.
                Put togheter all the 4 masks and remove the moving piece */
+
+            occupation ^= 1UL << sq; /* remove the selected piece from the occupation */
+            return (((0x8080808080808080UL >> (63 ^ (int)LSB((0x0101010101010101UL << sq) & (occupation | 0xFF00000000000000UL)))) & (0x0101010101010101UL << (int)MSB((0x8080808080808080UL >> (63 ^ sq)) & (occupation | 0x00000000000000FFUL)))) |
+                    ((0xFF00000000000000UL >> (63 ^ (int)LSB((0x00000000000000FFUL << sq) & (occupation | 0x8080808080808080UL)))) & (0x00000000000000FFUL << (int)MSB((0xFF00000000000000UL >> (63 ^ sq)) & (occupation | 0x0101010101010101UL)))));
         }
 
 
@@ -306,14 +310,18 @@ namespace QBB
         private static ulong GenBishop(int sq, ulong occupation)
         {
             /* it's the same as the rook */
-            ulong piece = 1UL << sq;
-            occupation ^= piece;
-            ulong piecesup = (0x8040201008040201UL << sq) & (occupation | 0xFF80808080808080UL);
-            ulong piecesdo = (0x8040201008040201UL >> (63 - sq)) & (occupation | 0x01010101010101FFUL);
-            ulong piecesle = (0x8102040810204081UL << sq) & (occupation | 0xFF01010101010101UL);
-            ulong piecesri = (0x8102040810204081UL >> (63 - sq)) & (occupation | 0x80808080808080FFUL);
-            return (((0x8040201008040201UL >> (63 - (int)LSB(piecesup))) & (0x8040201008040201UL << (int)MSB(piecesdo))) |
-                         ((0x8102040810204081UL >> (63 - (int)LSB(piecesle))) & (0x8102040810204081UL << (int)MSB(piecesri)))) ^ piece;
+            //ulong piece = 1UL << sq;
+            //occupation ^= piece;
+            //ulong piecesup = (0x8040201008040201UL << sq) & (occupation | 0xFF80808080808080UL);
+            //ulong piecesdo = (0x8040201008040201UL >> (63 - sq)) & (occupation | 0x01010101010101FFUL);
+            //ulong piecesle = (0x8102040810204081UL << sq) & (occupation | 0xFF01010101010101UL);
+            //ulong piecesri = (0x8102040810204081UL >> (63 - sq)) & (occupation | 0x80808080808080FFUL);
+            //return (((0x8040201008040201UL >> (63 - (int)LSB(piecesup))) & (0x8040201008040201UL << (int)MSB(piecesdo))) |
+            //             ((0x8102040810204081UL >> (63 - (int)LSB(piecesle))) & (0x8102040810204081UL << (int)MSB(piecesri)))) ^ piece;
+
+            occupation ^= 1UL << sq; /* remove the selected piece from the occupation */
+            return (((0x8040201008040201UL >> (63 ^ (int)LSB((0x8040201008040201UL << sq) & (occupation | 0xFF80808080808080UL)))) & (0x8040201008040201UL << (int)MSB((0x8040201008040201UL >> (63 ^ sq)) & (occupation | 0x01010101010101FFUL)))) |
+                    ((0x8102040810204081UL >> (63 ^ (int)LSB((0x8102040810204081UL << sq) & (occupation | 0xFF01010101010101UL)))) & (0x8102040810204081UL << (int)MSB((0x8102040810204081UL >> (63 ^ sq)) & (occupation | 0x80808080808080FFUL)))));
         }
 
         /* return the bitboard with pieces of the same type */
