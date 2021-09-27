@@ -355,6 +355,7 @@ namespace QBB
             }
         }
 
+
         /* try the move and see if the king is in check. If so return the attacking pieces, if not return 0 */
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool Illegal(ref TMove move)
@@ -381,14 +382,24 @@ namespace QBB
                 }
             }
 
-            bool kingIsSafe = //as soon as there's one attack you can stop evaluating the remaining peieces (early out)
-                (KnightDest[kingsq] & Knights() & newopposing) == 0 &&
-                ((((king << 9) & 0xFEFEFEFEFEFEFEFEUL) | ((king << 7) & 0x7F7F7F7F7F7F7F7FUL)) & Pawns() & newopposing) == 0 &&
-                (GenBishop(kingsq, newoccupation) & QueenOrBishops() & newopposing) == 0 &&
-                (GenRook(kingsq, newoccupation) & QueenOrRooks() & newopposing) == 0 &&
-                ((KingDest[kingsq] & Kings()) & newopposing) == 0;
+            ulong mask = KnightDest[kingsq] & newopposing;
+            if (mask != 0 && (mask & Knights()) > 0)
+                return true;
 
-            return !kingIsSafe;
+            mask = (((king << 9) & 0xFEFEFEFEFEFEFEFEUL) | ((king << 7) & 0x7F7F7F7F7F7F7F7FUL)) & newopposing;
+            if (mask != 0 && (mask & Pawns()) > 0)
+                return true;
+
+            mask = QueenOrBishops() & newopposing;
+            if (mask != 0 && (mask & GenBishop(kingsq, newoccupation)) > 0)
+                return true;
+
+            mask = QueenOrRooks() & newopposing;
+            if (mask != 0 && (mask & GenRook(kingsq, newoccupation)) > 0)
+                return true;
+
+            mask = newopposing & KingDest[kingsq];
+            return (mask != 0 && (mask & Kings()) > 0);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -515,7 +526,7 @@ namespace QBB
             ulong pawns = Pawns() & SideToMove();
             /* Generate pawns right captures */
             for (ulong rpc = (pawns << 9) & 0x00FEFEFEFEFEFEFEUL & opposing; rpc != 0; rpc = ClearLSB(rpc))
-                moves[index++] = new TMove()
+                moves[index++] = new TMove
                 {
                     MoveType = TPieceType.PAWN | TPieceType.CAPTURE,
                     From = (byte)(LSB(rpc) - 9),
@@ -525,7 +536,7 @@ namespace QBB
 
             /* Generate pawns left captures */
             for (ulong lpc = (pawns << 7) & 0x007F7F7F7F7F7F7FUL & opposing; lpc != 0; lpc = ClearLSB(lpc))
-                moves[index++] = new TMove()
+                moves[index++] = new TMove
                 {
                     MoveType = TPieceType.PAWN | TPieceType.CAPTURE,
                     From = (byte)(LSB(lpc) - 7),
@@ -540,7 +551,7 @@ namespace QBB
                 for (ulong promo = (pawns << 9) & 0xFE00000000000000UL & opposing; promo != 0; promo = ClearLSB(promo))
                 {
                     for (TPieceType piece = TPieceType.QUEEN; piece >= TPieceType.KNIGHT; piece--)
-                        moves[index++] = new TMove()
+                        moves[index++] = new TMove
                         {
                             MoveType = TPieceType.PAWN | TPieceType.PROMO | TPieceType.CAPTURE,
                             From = (byte)(LSB(promo) - 9),
@@ -554,7 +565,7 @@ namespace QBB
                 for (ulong promo = (pawns << 7) & 0x7F00000000000000UL & opposing; promo != 0; promo = ClearLSB(promo))
                 {
                     for (TPieceType piece = TPieceType.QUEEN; piece >= TPieceType.KNIGHT; piece--)
-                        moves[index++] = new TMove()
+                        moves[index++] = new TMove
                         {
                             MoveType = TPieceType.PAWN | TPieceType.PROMO | TPieceType.CAPTURE,
                             From = (byte)(LSB(promo) - 7),
@@ -569,7 +580,7 @@ namespace QBB
                     promo = ClearLSB(promo))
                 {
                     for (TPieceType piece = TPieceType.QUEEN; piece >= TPieceType.KNIGHT; piece--)
-                        moves[index++] = new TMove()
+                        moves[index++] = new TMove
                         {
                             MoveType = TPieceType.PAWN | TPieceType.PROMO,
                             From = (byte)(LSB(promo) - 8),
@@ -583,7 +594,7 @@ namespace QBB
             if (EnPass() != 8)
             {
                 for (ulong enpassant = pawns & EnPassant[EnPass()]; enpassant != 0; enpassant = ClearLSB((enpassant)))
-                    moves[index++] = new TMove()
+                    moves[index++] = new TMove
                     {
                         MoveType = TPieceType.PAWN | TPieceType.EP | TPieceType.PROMO,
                         From = (byte)LSB(enpassant),
@@ -853,7 +864,7 @@ namespace QBB
         static void Main(string[] args)
         {
             Console.WriteLine("QBB Perft in C#");
-            Console.WriteLine("https://github.com/lithander/QBB-Perft/tree/v1.7");
+            Console.WriteLine("https://github.com/lithander/QBB-Perft/tree/v1.8");
             Console.WriteLine();
             PerftResult accu = TestPerft("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 6, 119060324); //Start Position
             accu += TestPerft("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1", 5, 193690690);
