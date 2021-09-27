@@ -382,12 +382,23 @@ namespace QBB
                 }
             }
 
-            return //as soon as there's one attack you can stop evaluating the remaining peieces (early out)
-                (Knights() & newopposing & KnightDest[kingsq]) > 0 ||
-                (Pawns() & newopposing & (((king << 9) & 0xFEFEFEFEFEFEFEFEUL) | ((king << 7) & 0x7F7F7F7F7F7F7F7FUL))) > 0 ||
-                ((QueenOrBishops() & newopposing) > 0 && (QueenOrBishops() & newopposing & GenBishop(kingsq, newoccupation)) > 0) ||
-                ((QueenOrRooks() & newopposing) > 0 && (QueenOrRooks() & newopposing & GenRook(kingsq, newoccupation)) > 0) ||
-                (Kings() & newopposing & KingDest[kingsq]) > 0;
+            ulong mask = KnightDest[kingsq] & newopposing;
+            if (mask != 0 && (mask & Knights()) > 0)
+                return true;
+
+            mask = (((king << 9) & 0xFEFEFEFEFEFEFEFEUL) | ((king << 7) & 0x7F7F7F7F7F7F7F7FUL)) & newopposing;
+            if (mask != 0 && (mask & Pawns()) > 0)
+                return true;
+
+            mask = QueenOrBishops() & newopposing;
+            if (mask != 0 && (mask & GenBishop(kingsq, newoccupation)) > 0)
+                return true;
+
+            mask = QueenOrRooks() & newopposing;
+            if (mask != 0 && (mask & GenRook(kingsq, newoccupation)) > 0)
+                return true;
+
+            return (Kings() & newopposing & KingDest[kingsq]) > 0;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
