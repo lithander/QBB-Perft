@@ -134,6 +134,7 @@ namespace QBB
         is used to change the side to move
         */
         //#define RevBB(bb) (__builtin_bswap64(bb))
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ulong _RevBB(ulong bb)
         {
             //Swap adjacent 32-bit blocks
@@ -145,28 +146,34 @@ namespace QBB
             return bb;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)] 
         public static ulong RevBB(ulong bb) => BinaryPrimitives.ReverseEndianness(bb);
 
         /* return the index of the most significant bit of the bitboard, bb must always be !=0 */
         //#define MSB(bb) (0x3F ^ __builtin_clzll(bb))
+        [MethodImpl(MethodImplOptions.AggressiveInlining)] 
         public static ulong MSB(ulong bb) => 63 ^ Lzcnt.X64.LeadingZeroCount(bb);
 
         /* return the index of the least significant bit of the bitboard, bb must always be !=0 */
         //#define LSB(bb) (__builtin_ctzll(bb))
+        [MethodImpl(MethodImplOptions.AggressiveInlining)] 
         public static ulong LSB(ulong bb) => Bmi1.X64.TrailingZeroCount(bb);
 
         /* extract the least significant bit of the bitboard */
         //#define ExtractLSB(bb) ((bb)&(-(bb)))
+        [MethodImpl(MethodImplOptions.AggressiveInlining)] 
         public static ulong _ExtractLSB(ulong bb) => bb & (0 - bb);
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)] 
         public static ulong ExtractLSB(ulong bb) => Bmi1.X64.ExtractLowestSetBit(bb);
 
         /* reset the least significant bit of bb */
         //#define ClearLSB(bb) ((bb)&((bb)-1))
+        [MethodImpl(MethodImplOptions.AggressiveInlining)] 
         public static ulong _ClearLSB(ulong bb) => bb & (bb - 1);
+        [MethodImpl(MethodImplOptions.AggressiveInlining)] 
         public static ulong ClearLSB(ulong bb) => Bmi1.X64.ResetLowestSetBit(bb);
-        /* return the number of bits sets of a bitboard */
-        //#define PopCount(bb) (__builtin_popcountll(bb))
-        public static ulong PopCount(ulong bb) => Popcnt.X64.PopCount(bb);
+
 
         /* Macro to check and reset the castle rights:
            CastleSM: short castling side to move
@@ -174,11 +181,17 @@ namespace QBB
            CastleSO: short castling opponent
            CastleLO: long castling opponent
          */
+        [MethodImpl(MethodImplOptions.AggressiveInlining)] 
         static bool CanCastleSM() => (Position.CastleFlags & 0x02) != 0;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)] 
         static bool CanCastleLM() => (Position.CastleFlags & 0x01) != 0;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)] 
         static void ResetCastleSM() => Position.CastleFlags &= 0xFD;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)] 
         static void ResetCastleLM() => Position.CastleFlags &= 0xFE;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)] 
         static void ResetCastleSO() => Position.CastleFlags &= 0xDF;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)] 
         static void ResetCastleLO() => Position.CastleFlags &= 0xEF;
 
         /* these Macros are used to calculate the bitboard of a particular kind of piece
@@ -301,6 +314,7 @@ namespace QBB
         }
 
         /* return the bitboard with the destinations of a piece in a square (exept for pawns) */
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         static ulong BBDestinations(TPieceType piece, int sq, ulong occupation)
         {
             switch (piece) // generate the destination squares of the piece
@@ -315,6 +329,7 @@ namespace QBB
         }
 
         /* try the move and see if the king is in check. If so return the attacking pieces, if not return 0 */
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool Illegal(ref TMove move)
         {
             ulong From = 1UL << move.From;
@@ -349,6 +364,7 @@ namespace QBB
             return !kingIsSafe;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void GenerateQuiets(in TMove[] moves, ref int index)
         {
             ulong occupation = Occupation();
@@ -441,6 +457,7 @@ namespace QBB
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void GenerateCapture(in TMove[] moves, ref int index)
         {
             ulong occupation = Occupation();
@@ -550,6 +567,7 @@ namespace QBB
         }
 
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void Make(ref TMove move)
         {
             Game[iPosition++] = Position;
@@ -808,7 +826,7 @@ namespace QBB
         static void Main(string[] args)
         {
             Console.WriteLine("QBB Perft in C#");
-            Console.WriteLine("https://github.com/lithander/QBB-Perft/tree/v1.4");
+            Console.WriteLine("https://github.com/lithander/QBB-Perft/tree/v1.5");
             Console.WriteLine();
             PerftResult accu = TestPerft("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 6, 119060324); //Start Position
             accu += TestPerft("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1", 5, 193690690);
