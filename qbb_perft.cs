@@ -46,9 +46,15 @@ namespace QBB
 
         static QbbPerft()
         {
+            Game = new TBoard[MAX_PLY];
             MovesLists = new TMove[MAX_PLY][];
             for (int i = 0; i < MAX_PLY; i++)
+            {
                 MovesLists[i] = new TMove[225];
+                Game[i] = new TBoard();
+            }
+
+            Position = Game[0];
         }
 
         /*
@@ -58,7 +64,7 @@ namespace QBB
         PM is the bitboard with the side to move pieces
         P0,P1 and P2: with these bitboards you can obtain every type of pieces and every pieces combinations.
         */
-        struct TBoard
+        class TBoard
         {
             public ulong PM;
             public ulong P0;
@@ -67,9 +73,22 @@ namespace QBB
             public byte CastleFlags; /* ..sl..SL  short long opponent SHORT LONG side to move */
             public byte EnPassant; /* enpassant column, =8 if not set */
             public byte STM; /* side to move */
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public TBoard Copy(TBoard other)
+            {
+                PM = other.PM;
+                P0 = other.P0;
+                P1 = other.P1;
+                P2 = other.P2;
+                CastleFlags = other.CastleFlags;
+                EnPassant = other.EnPassant;
+                STM = other.STM;
+                return this;
+            }
         }
 
-        static TBoard[] Game = new TBoard[MAX_PLY];
+        static TBoard[] Game;
         static int iPosition;
         private static TBoard Position;
 
@@ -570,7 +589,7 @@ namespace QBB
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void Make(ref TMove move)
         {
-            Game[iPosition++] = Position;
+            Position = Game[++iPosition].Copy(Position);
             ulong part = 1UL << move.From;
             ulong dest = 1UL << move.To;
             switch (move.MoveType & TPieceType.PIECE_MASK)
@@ -826,7 +845,7 @@ namespace QBB
         static void Main(string[] args)
         {
             Console.WriteLine("QBB Perft in C#");
-            Console.WriteLine("https://github.com/lithander/QBB-Perft/tree/v1.5");
+            Console.WriteLine("https://github.com/lithander/QBB-Perft/tree/v1.6");
             Console.WriteLine();
             PerftResult accu = TestPerft("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 6, 119060324); //Start Position
             accu += TestPerft("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1", 5, 193690690);
